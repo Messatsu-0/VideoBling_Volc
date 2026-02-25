@@ -183,3 +183,80 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod logs --tail=200 b
 2. 认证方式：Basic Auth（共享账号）
 3. 数据保留：最近 20 个任务（通过现有 cleanup API）
 4. 后续升级：域名 + 备案 + HTTPS + 更细粒度鉴权
+
+## 13. GitHub Actions 自动部署到 ECS
+
+仓库已提供工作流：
+
+- `/Users/bytedance/Documents/VideoBling_local/.github/workflows/deploy-ecs.yml`
+
+触发方式：
+
+1. 推送到 `main` 自动部署
+2. Actions 页面手动触发 `workflow_dispatch`，可指定 `ref`
+
+### 13.1 ECS 端一次性准备（让服务器可 `git pull`）
+
+在 ECS 上执行：
+
+```bash
+cd /opt/videobling
+git remote -v
+```
+
+如果仓库是私有仓库，推荐使用 Deploy Key：
+
+```bash
+ssh-keygen -t ed25519 -C "videobling-ecs-deploy" -f ~/.ssh/id_ed25519 -N ""
+cat ~/.ssh/id_ed25519.pub
+```
+
+把公钥添加到 GitHub 仓库：
+
+1. Repo -> `Settings` -> `Deploy keys` -> `Add deploy key`
+2. 勾选 `Allow read access`
+
+然后切换 ECS 仓库 remote 为 SSH：
+
+```bash
+cd /opt/videobling
+git remote set-url origin git@github.com:Messatsu-0/VideoBling_Volc.git
+ssh -T git@github.com
+```
+
+### 13.2 GitHub 仓库配置
+
+在 GitHub 仓库中设置以下 Secrets（`Settings -> Secrets and variables -> Actions`）：
+
+1. `ECS_HOST`：ECS 公网 IP
+2. `ECS_USER`：SSH 用户（如 `root` 或普通运维用户）
+3. `ECS_SSH_KEY`：用于登录 ECS 的私钥全文（多行原样粘贴）
+4. `ECS_PORT`：可选，默认 `22`
+
+设置以下 Variables（可选）：
+
+1. `ECS_WORKDIR`：服务器项目目录，默认 `/opt/videobling`
+
+### 13.3 首次验证
+
+1. 在 GitHub 打开 `Actions`，运行 `Deploy to ECS`（手动触发一次）。
+2. 确认日志中 `./scripts/update_prod.sh` 成功执行。
+3. ECS 上执行：
+
+```bash
+cd /opt/videobling
+./scripts/print_access_url.sh
+```
+
+输出 `Public URL: http://<EIP>` 后，即可把该链接发给客户。
+
+### 13.4 后续更新方式
+
+1. 本地提交并推送到 `main`：
+
+```bash
+git push origin main
+```
+
+2. GitHub Actions 自动 SSH 到 ECS 并执行更新。
+3. 客户继续访问同一个 URL（`http://<EIP>`）。

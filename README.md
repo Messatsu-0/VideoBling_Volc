@@ -94,6 +94,20 @@ cd /Users/bytedance/Documents/VideoBling_local
    - `./scripts/print_access_url.sh`
 4. 详细步骤见：`/Users/bytedance/Documents/VideoBling_local/DEPLOYMENT_CN.md`
 
+### GitHub Actions 自动发布（可选，推荐）
+
+仓库已内置工作流：
+
+- `/Users/bytedance/Documents/VideoBling_local/.github/workflows/deploy-ecs.yml`
+
+作用：
+
+1. 推送 `main` 自动部署到 ECS
+2. 支持手动指定 `ref` 发布
+
+你只需在 GitHub 仓库里配置 Actions Secrets（`ECS_HOST`、`ECS_USER`、`ECS_SSH_KEY`，可选 `ECS_PORT`）和可选 Variable（`ECS_WORKDIR`）。
+完整配置步骤见：`/Users/bytedance/Documents/VideoBling_local/DEPLOYMENT_CN.md` 第 13 节。
+
 ## 本机直接运行（非 Docker）
 
 以下方式适合你要本机调试 Python/Node 代码时使用。

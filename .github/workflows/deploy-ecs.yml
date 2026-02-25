@@ -1,0 +1,64 @@
+name: Deploy to ECS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (branch/tag/commit)"
+        required: false
+        default: "main"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: videobling-ecs-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Prepare SSH
+        env:
+          ECS_HOST: ${{ secrets.ECS_HOST }}
+          ECS_SSH_KEY: ${{ secrets.ECS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ECS_HOST}" ]; then
+            echo "Missing required secret: ECS_HOST"
+            exit 1
+          fi
+          if [ -z "${ECS_SSH_KEY}" ]; then
+            echo "Missing required secret: ECS_SSH_KEY"
+            exit 1
+          fi
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${ECS_SSH_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${ECS_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Deploy on ECS
+        env:
+          ECS_HOST: ${{ secrets.ECS_HOST }}
+          ECS_USER: ${{ secrets.ECS_USER }}
+          ECS_PORT: ${{ secrets.ECS_PORT }}
+          ECS_WORKDIR: ${{ vars.ECS_WORKDIR }}
+          DEPLOY_REF: ${{ github.event.inputs.ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ECS_USER}" ]; then
+            echo "Missing required secret: ECS_USER"
+            exit 1
+          fi
+
+          PORT="${ECS_PORT:-22}"
+          WORKDIR="${ECS_WORKDIR:-/opt/videobling}"
+          REF="${DEPLOY_REF:-main}"
+
+          ssh -p "${PORT}" "${ECS_USER}@${ECS_HOST}" "cd '${WORKDIR}' && ./scripts/update_prod.sh '${REF}'"
