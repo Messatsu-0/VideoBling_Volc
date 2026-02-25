@@ -1,0 +1,40 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8000"
+    volumes:
+      - ${RUNTIME_DIR:-./runtime}:/app/runtime
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: ["python", "-m", "huey.bin.huey_consumer", "app.workers.queue.huey", "-w", "1"]
+    volumes:
+      - ${RUNTIME_DIR:-./runtime}:/app/runtime
+
+  gateway:
+    build:
+      context: .
+      dockerfile: deploy/gateway/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - ${GATEWAY_PORT:-80}:80
+    volumes:
+      - ${BASIC_AUTH_FILE:-./deploy/gateway/.htpasswd}:/etc/nginx/.htpasswd:ro

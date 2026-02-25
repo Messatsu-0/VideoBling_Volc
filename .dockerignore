@@ -1,0 +1,16 @@
+.venv
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.git
+.gitignore
+runtime/jobs/*
+!runtime/jobs/.gitkeep
+runtime/*.sqlite
+runtime/*.sqlite3
+runtime/*.sqlite-shm
+runtime/*.sqlite-wal
+web/node_modules
+web/dist
