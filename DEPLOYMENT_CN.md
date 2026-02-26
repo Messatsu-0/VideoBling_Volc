@@ -195,6 +195,8 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod logs --tail=200 b
 1. 推送到 `main` 自动部署
 2. Actions 页面手动触发 `workflow_dispatch`，可指定 `ref`
 
+该工作流已切换为 `self-hosted runner` 模式：任务直接在 ECS 本机执行，不再依赖 GitHub Hosted Runner 通过公网 SSH 回连 ECS。
+
 ### 13.1 ECS 端一次性准备（让服务器可 `git pull`）
 
 在 ECS 上执行：
@@ -224,20 +226,40 @@ git remote set-url origin git@github.com:Messatsu-0/VideoBling_Volc.git
 ssh -T git@github.com
 ```
 
-### 13.2 GitHub 仓库配置
+### 13.2 安装 self-hosted runner（在 ECS 上）
 
-在 GitHub 仓库中设置以下 Secrets（`Settings -> Secrets and variables -> Actions`）：
+在 GitHub 仓库页面执行：
 
-1. `ECS_HOST`：ECS 公网 IP
-2. `ECS_USER`：SSH 用户（如 `root` 或普通运维用户）
-3. `ECS_SSH_KEY`：用于登录 ECS 的私钥全文（多行原样粘贴）
-4. `ECS_PORT`：可选，默认 `22`
+1. `Settings -> Actions -> Runners -> New self-hosted runner`
+2. 选择 `Linux` + `x64`
+3. 页面会显示 4 段命令（下载、解压、配置、启动）
 
-设置以下 Variables（可选）：
+在 ECS 上新建 runner 目录并执行页面给出的命令（示例目录）：
 
-1. `ECS_WORKDIR`：服务器项目目录，默认 `/opt/videobling`
+```bash
+mkdir -p /opt/actions-runner
+cd /opt/actions-runner
+# 依次执行 GitHub 页面给出的命令
+```
 
-### 13.3 首次验证
+推荐将 runner 安装为系统服务：
+
+```bash
+cd /opt/actions-runner
+sudo ./svc.sh install
+sudo ./svc.sh start
+sudo ./svc.sh status
+```
+
+### 13.3 GitHub 仓库配置
+
+在 GitHub 仓库中设置 Variables（`Settings -> Secrets and variables -> Actions`）：
+
+1. `ECS_WORKDIR`：服务器项目目录，建议 `/opt/videobling`
+
+`self-hosted` 模式下，`ECS_HOST`、`ECS_USER`、`ECS_SSH_KEY`、`ECS_PORT` 不再是必需项。
+
+### 13.4 首次验证
 
 1. 在 GitHub 打开 `Actions`，运行 `Deploy to ECS`（手动触发一次）。
 2. 确认日志中 `./scripts/update_prod.sh` 成功执行。
@@ -250,7 +272,7 @@ cd /opt/videobling
 
 输出 `Public URL: http://<EIP>` 后，即可把该链接发给客户。
 
-### 13.4 后续更新方式
+### 13.5 后续更新方式
 
 1. 本地提交并推送到 `main`：
 
@@ -258,5 +280,5 @@ cd /opt/videobling
 git push origin main
 ```
 
-2. GitHub Actions 自动 SSH 到 ECS 并执行更新。
+2. GitHub Actions 在 ECS 本机 runner 上执行 `update_prod.sh` 完成更新。
 3. 客户继续访问同一个 URL（`http://<EIP>`）。

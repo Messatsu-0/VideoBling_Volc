@@ -105,8 +105,9 @@ cd /Users/bytedance/Documents/VideoBling_local
 1. 推送 `main` 自动部署到 ECS
 2. 支持手动指定 `ref` 发布
 
-你只需在 GitHub 仓库里配置 Actions Secrets（`ECS_HOST`、`ECS_USER`、`ECS_SSH_KEY`，可选 `ECS_PORT`）和可选 Variable（`ECS_WORKDIR`）。
-完整配置步骤见：`/Users/bytedance/Documents/VideoBling_local/DEPLOYMENT_CN.md` 第 13 节。
+当前默认方案为 `self-hosted runner`（runner 运行在 ECS 本机），无需配置 ECS SSH Secrets。
+你只需配置 Variable：`ECS_WORKDIR=/opt/videobling`，并按文档完成 runner 安装。
+完整步骤见：`/Users/bytedance/Documents/VideoBling_local/DEPLOYMENT_CN.md` 第 13 节。
 
 ## 本机直接运行（非 Docker）
 

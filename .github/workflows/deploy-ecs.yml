@@ -20,50 +20,23 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
     timeout-minutes: 30
     steps:
-      - name: Prepare SSH
+      - name: Deploy on ECS (self-hosted runner)
         env:
-          ECS_HOST: ${{ secrets.ECS_HOST }}
-          ECS_PORT: ${{ secrets.ECS_PORT }}
-          ECS_SSH_KEY: ${{ secrets.ECS_SSH_KEY }}
-        run: |
-          set -euo pipefail
-          if [ -z "${ECS_HOST}" ]; then
-            echo "Missing required secret: ECS_HOST"
-            exit 1
-          fi
-          if [ -z "${ECS_SSH_KEY}" ]; then
-            echo "Missing required secret: ECS_SSH_KEY"
-            exit 1
-          fi
-
-          PORT="${ECS_PORT:-22}"
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "${ECS_SSH_KEY}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          # Some networks block port 22; scan the configured SSH port.
-          ssh-keyscan -T 10 -p "${PORT}" -H "${ECS_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || \
-            echo "Warning: ssh-keyscan failed on ${ECS_HOST}:${PORT}, will rely on StrictHostKeyChecking=accept-new."
-
-      - name: Deploy on ECS
-        env:
-          ECS_HOST: ${{ secrets.ECS_HOST }}
-          ECS_USER: ${{ secrets.ECS_USER }}
-          ECS_PORT: ${{ secrets.ECS_PORT }}
           ECS_WORKDIR: ${{ vars.ECS_WORKDIR }}
           DEPLOY_REF: ${{ github.event.inputs.ref || github.ref_name }}
         run: |
           set -euo pipefail
-          if [ -z "${ECS_USER}" ]; then
-            echo "Missing required secret: ECS_USER"
-            exit 1
-          fi
-
-          PORT="${ECS_PORT:-22}"
           WORKDIR="${ECS_WORKDIR:-/opt/videobling}"
           REF="${DEPLOY_REF:-main}"
-
-          ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 -p "${PORT}" \
-            "${ECS_USER}@${ECS_HOST}" "cd '${WORKDIR}' && ./scripts/update_prod.sh '${REF}'"
+          if [ ! -d "${WORKDIR}/.git" ]; then
+            echo "Missing deployment repository: ${WORKDIR}"
+            exit 1
+          fi
+          cd "${WORKDIR}"
+          ./scripts/update_prod.sh "${REF}"
