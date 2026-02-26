@@ -18,6 +18,10 @@ require_cmd() {
 require_cmd docker
 require_cmd git
 
+# Allow running deployment scripts under service users (e.g. GitHub self-hosted runner)
+# even when repository ownership differs from the process user.
+git config --global --add safe.directory "$ROOT_DIR" >/dev/null 2>&1 || true
+
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Error: missing $ENV_FILE"
   exit 1
